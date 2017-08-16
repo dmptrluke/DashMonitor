@@ -158,6 +158,8 @@ def check_deluge():
         if data.get('result', False).get('stats', False).get('download_rate', 0) > 0:
             rate = filesize.size(data['result']['stats']['download_rate'], system=filesize.si)
             return Status.ACTIVE.value, "{}/s".format(rate)
+        elif data.get('result', False).get('stats', False).get('upload_rate', 0) > 0:
+            return Status.IDLE.value, "Seeding"
         else:
             return Status.IDLE.value, "Idle"
     else:
