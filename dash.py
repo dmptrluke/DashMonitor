@@ -48,7 +48,7 @@ def check_nzbget():
         return Status.IDLE.value, "Idle"
     else:
         rate = filesize.size(data['result']['DownloadRate'], system=filesize.si)
-        return Status.ACTIVE.value, f"{rate}/s"
+        return Status.ACTIVE.value, "{}/s".format(rate)
 
 
 def check_sonarr():
@@ -134,7 +134,6 @@ def check_deluge():
 
     try:
         data = query.json()
-        print(data)
     except ValueError:
         return Status.ERROR.value, "BadJSON"
 
@@ -162,4 +161,5 @@ def status():
 
 
 # let's run this thing!
-app.run(port=80)
+if __name__ == "__main__":
+    app.run(port=80)
