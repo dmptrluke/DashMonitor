@@ -115,25 +115,24 @@ def check_deluge():
         'Content-Type': 'application/json'
     }
 
-    global deluge_session
-    if not deluge_session:
-        try:
-            deluge_session = requests.Session()
+    #global deluge_session
+    #if not deluge_session:
+    try:
+        deluge_session = requests.Session()
 
-            login_args = {
-                "method": "auth.login",
-                "params": [keys['deluge']],
-                "id": 2
-            }
+        login_args = {
+            "method": "auth.login",
+            "params": [keys['deluge']],
+            "id": 2
+        }
 
-            login = deluge_session.post("{}/json".format(paths['Deluge']), data=json.dumps(login_args),
-                                 timeout=0.5, headers=headers)
+        login = deluge_session.post("{}/json".format(paths['Deluge']), data=json.dumps(login_args),
+                             timeout=0.5, headers=headers)
 
-            login.raise_for_status()
-        except (requests.ConnectionError, requests.HTTPError, requests.Timeout) as ex:
-            traceback.print_exc()
-            return Status.ERROR.value, "NoAPILogin"
-
+        login.raise_for_status()
+    except (requests.ConnectionError, requests.HTTPError, requests.Timeout) as ex:
+        traceback.print_exc()
+        return Status.ERROR.value, "NoAPILogin"
 
     try:
         query_args = {
@@ -153,6 +152,8 @@ def check_deluge():
         print(data)
     except ValueError:
         return Status.ERROR.value, "BadJSON"
+
+
 
     if data.get('result', False).get('stats', False):
         if data.get('result', False).get('stats', False).get('download_rate', 0) > 0:
