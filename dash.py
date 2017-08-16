@@ -13,6 +13,7 @@ paths = config['paths']
 keys = config['keys']
 
 app = Flask(__name__)
+deluge_session = None
 
 
 class Status(Enum):
@@ -109,23 +110,38 @@ def check_deluge():
         (str) an instance of the Status enum value representing the status of the service
         (str) a short descriptive string representing the status of the service
     """
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    global deluge_session
+    if not deluge_session:
+        try:
+            deluge_session = requests.Session()
+
+            login_args = {
+                "method": "auth.login",
+                "params": [keys['deluge']],
+                "id": 2
+            }
+
+            login = deluge_session.post("{}/json".format(paths['Deluge']), data=json.dumps(login_args),
+                                 timeout=0.5, headers=headers)
+
+            login.raise_for_status()
+        except (requests.ConnectionError, requests.HTTPError, requests.Timeout) as ex:
+            traceback.print_exc()
+            return Status.ERROR.value, "NoAPILogin"
+
+
     try:
-        session = requests.Session()
-
-        login_args = {
-            "method": "auth.login",
-            "params": [keys['deluge']],
-            "id": 2
-        }
-        login = session.post("{}/json".format(paths['Deluge']), data=json.dumps(login_args),
-                             timeout=0.5)
-
         query_args = {
-            "method": "web.connected",
-            "params": [],
+            "method": "web.update_ui",
+            "params": [['queue'], {}],
             "id": 3
         }
-        query = session.post("{}/json".format(paths['Deluge']), data=json.dumps(query_args), timeout=0.5)
+        query = deluge_session.post("{}/json".format(paths['Deluge']), data=json.dumps(query_args), timeout=0.5, headers=headers)
 
         query.raise_for_status()
     except (requests.ConnectionError, requests.HTTPError, requests.Timeout) as ex:
@@ -134,11 +150,18 @@ def check_deluge():
 
     try:
         data = query.json()
+        print(data)
     except ValueError:
         return Status.ERROR.value, "BadJSON"
 
-    if data.get('result', False):
-        return Status.ACTIVE.value, "Online"
+    if data.get('result', False).get('stats', False):
+        if data.get('result', False).get('stats', False).get('download_rate', 0) > 0:
+            rate = filesize.size(data['result']['stats']['download_rate'], system=filesize.si)
+            return Status.ACTIVE.value, "{}/s".format(rate)
+        else:
+            return Status.IDLE.value, "Idle"
+    else:
+        return Status.ERROR.value, "BadAPI"
 
 
 @app.route("/status")
